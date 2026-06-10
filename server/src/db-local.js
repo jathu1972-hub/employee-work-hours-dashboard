@@ -1,6 +1,5 @@
 /** Local dev: SQLite + automatic Excel export */
 import * as sqlite from './db-sqlite.js';
-import { refreshExcelFiles } from './excel-export.js';
 
 export {
   getTodayDate,
@@ -17,6 +16,7 @@ async function withExcelUpdate(fn) {
   const result = await fn();
   try {
     const records = sqlite.getAllRecords();
+    const { refreshExcelFiles } = await import('./excel-export.js');
     await refreshExcelFiles(records);
   } catch (e) {
     console.warn('Excel auto-update:', e.message);

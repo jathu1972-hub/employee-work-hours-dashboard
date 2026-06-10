@@ -3,12 +3,12 @@ export * from './db-utils.js';
 export { useBlobStore } from './db-router.js';
 
 import * as blob from './db-blob.js';
-import { refreshExcelFiles } from './excel-export.js';
 
 async function withExcelUpdate(fn) {
   const result = await fn();
   try {
     const records = await blob.getAllRecords();
+    const { refreshExcelFiles } = await import('./excel-export.js');
     await refreshExcelFiles(records);
   } catch (e) {
     console.warn('Excel auto-update:', e.message);

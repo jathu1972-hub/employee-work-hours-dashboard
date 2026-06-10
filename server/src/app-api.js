@@ -10,10 +10,7 @@ import {
   getAllRecords,
 } from './db-index.js';
 import { useBlobStore } from './db-router.js';
-import { getDashboardAnalytics } from './analytics.js';
-import { getCsvContent } from './csv-export.js';
 import { getTodayDate } from './db-utils.js';
-import { getExcelStatus, readExcelFile, FILES } from './excel-export.js';
 import * as tasksApi from './tasks-index.js';
 import { registerTaskRoutes } from './task-routes.js';
 import { buildTaskAnalytics } from './task-analytics.js';
@@ -66,7 +63,6 @@ export function createApiApp() {
       platform: process.env.VERCEL ? 'vercel' : process.env.NETLIFY ? 'netlify' : 'node',
       storage: useBlobStore() ? (process.env.VERCEL ? 'vercel-blob' : 'netlify-blob') : 'sqlite',
       excel: true,
-      excelStatus: getExcelStatus(),
     });
   });
 
@@ -119,6 +115,7 @@ export function createApiApp() {
 
   app.get('/api/attendance/dashboard', async (req, res) => {
     try {
+      const { getDashboardAnalytics } = await import('./analytics.js');
       const analytics = await getDashboardAnalytics(req.query.date);
       try {
         const tasks = await tasksApi.listTasks();
@@ -156,12 +153,14 @@ export function createApiApp() {
     res.status(401).json({ error: 'Invalid password' });
   });
 
-  app.get('/api/admin/excel/status', adminAuth, (_, res) => {
+  app.get('/api/admin/excel/status', adminAuth, async (_, res) => {
+    const { getExcelStatus } = await import('./excel-export.js');
     res.json(getExcelStatus());
   });
 
   app.get('/api/admin/export-excel/:type', adminAuth, async (req, res) => {
     try {
+      const { readExcelFile, FILES } = await import('./excel-export.js');
       const key = EXCEL_KEYS[req.params.type];
       if (!key) return res.status(400).json({ error: 'Invalid export type' });
       const buffer = await readExcelFile(key);
@@ -184,6 +183,7 @@ export function createApiApp() {
     };
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename="${names[type] || 'export.csv'}"`);
+    const { getCsvContent } = await import('./csv-export.js');
     res.send(await getCsvContent(type));
   });
 
