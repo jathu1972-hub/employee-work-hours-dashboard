@@ -1,0 +1,33 @@
+[build]
+  command = "npm install && npm install --prefix server"
+  publish = "server/public"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "20"
+  USE_BLOB_DB = "1"
+  NETLIFY = "true"
+  SITE_ID = "0f8f452e-f979-4fff-8684-a666b1849889"
+
+[functions]
+  node_bundler = "esbuild"
+  directory = "netlify/functions"
+
+[functions.api]
+  included_files = ["server/src/db-utils.js", "server/src/db-blob.js", "server/src/db-index.js", "server/src/db-router.js", "server/src/daily-reset.js", "server/src/employees.js", "server/src/analytics.js", "server/src/csv-export.js", "server/src/excel-export.js", "server/src/tasks/constants.js", "server/src/tasks-store-blob.js", "server/src/tasks-index.js", "server/src/task-analytics.js", "server/src/task-routes.js", "server/src/app-api.js"]
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/admin"
+  to = "/admin.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"

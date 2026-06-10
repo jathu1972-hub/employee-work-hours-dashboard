@@ -1,0 +1,15 @@
+node_modules/
+server/node_modules/
+.next/
+server/data/*.db
+server/data/*.json
+server/backup/
+server/exports/
+server/backups/
+.env
+.env.*
+!.env.example
+server/exports/*.xlsx
+.netlify/
+dist/
+*.log

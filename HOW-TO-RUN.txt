@@ -1,0 +1,74 @@
+╔══════════════════════════════════════════════════════════════╗
+║     EMPLOYEE WORK HOURS DASHBOARD — HOW TO RUN               ║
+╚══════════════════════════════════════════════════════════════╝
+
+STEP 1 — START THE SERVER
+─────────────────────────
+  Double-click this file:
+
+    START.bat
+
+  (in folder: employee-work-hours-dashboard)
+
+  OR run in PowerShell:
+
+    cd "C:\Users\J VIJAYA KUMARY\employee-work-hours-dashboard\server"
+    node src/index.js
+
+  Wait until you see:
+    "Server running on http://localhost:3001"
+
+
+STEP 2 — OPEN IN BROWSER
+────────────────────────
+
+  EMPLOYEE (no password):
+    http://localhost:3001
+
+  ADMIN / OWNER:
+    http://localhost:3001/admin
+    Password: admin123
+
+
+STEP 3 — EMPLOYEE WORKFLOW
+──────────────────────────
+  1. Select your name card (Arjun, Priya, Rahul, Meena, or Karthik)
+  2. Click  CHECK IN  (start work)
+  3. Click  CHECK OUT  (end work)
+  4. Hours calculated automatically
+
+
+STEP 4 — ADMIN WORKFLOW
+───────────────────────
+  1. Login with password: admin123
+  2. View dashboard & live attendance
+  3. Search employee by name
+  4. Download Excel / CSV / PDF reports
+
+
+EXCEL FILES (auto-saved)
+────────────────────────
+  Folder: server\exports\
+
+  - Daily Report.xlsx
+  - Monthly Report.xlsx
+  - Employee Report.xlsx
+  - Attendance Master.xlsx
+
+
+CHANGE ADMIN PASSWORD
+─────────────────────
+  Edit file: server\.env
+  Line: ADMIN_PASSWORD=admin123
+  Change to your password, save, restart server.
+
+
+STOP SERVER
+───────────
+  Press Ctrl + C in the black terminal window.
+
+
+NEED HELP?
+──────────
+  Node.js required. Test: node --version
+  Must show v18 or higher.

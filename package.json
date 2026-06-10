@@ -1,0 +1,20 @@
+{
+  "name": "attendance-hub",
+  "version": "5.0.0",
+  "private": true,
+  "description": "Employee Attendance & Work Hours Dashboard",
+  "scripts": {
+    "start": "npm start --prefix server",
+    "dev": "npm run dev --prefix server",
+    "build": "npm install --prefix server",
+    "netlify:dev": "npx netlify dev",
+    "netlify:deploy": "npx netlify deploy --prod"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "serverless-http": "^3.2.0"
+  }
+}
