@@ -44,7 +44,7 @@ async function readBody(req) {
 const dbIndexPromise = import('../server/src/db-index.js');
 const employeesPromise = import('../server/src/employees.js');
 const tasksPromise = import('../server/src/tasks-index.js');
-const taskUtilsPromise = import('../server/src/task-utils.js');
+const taskAnalyticsPromise = import('../server/src/task-analytics.js');
 
 async function handleFastPath(req, res) {
   const path = (req.url || '').split('?')[0];
@@ -117,7 +117,7 @@ async function handleFastPath(req, res) {
   const taskEmpMatch = path.match(/^\/api\/tasks\/employee\/(.+)$/);
   if (taskEmpMatch && req.method === 'GET') {
     const tasksApi = await tasksPromise;
-    const { categorizeEmployeeTasks } = await taskUtilsPromise;
+    const { categorizeEmployeeTasks } = await taskAnalyticsPromise;
     const name = decodeURIComponent(taskEmpMatch[1]);
     const tasks = await tasksApi.listTasks({ employee: name });
     const notifications = await tasksApi.getNotifications(name);
