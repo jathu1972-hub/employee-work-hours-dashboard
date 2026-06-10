@@ -26,7 +26,7 @@ async function getHandler() {
   if (!handlerPromise) {
     handlerPromise = (async () => {
       const { createApiApp } = await import('../../server/src/app-api.js');
-      const app = createApiApp();
+      const app = await createApiApp();
       return serverless(app, {
         binary: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
       });

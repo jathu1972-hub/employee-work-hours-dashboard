@@ -1,4 +1,3 @@
-import { getStore } from '@netlify/blobs';
 import { loadJson, saveJson } from './vercel-json-store.js';
 import { useVercelStore } from './db-router.js';
 import { getTodayDate } from './db-utils.js';
@@ -13,7 +12,8 @@ const VERCEL_TASKS_PATH = 'attendance-hub/tasks-data.json';
 const VERCEL_NOTIF_PATH = 'attendance-hub/task-notifications.json';
 const VERCEL_COMPLETIONS_PATH = 'attendance-hub/task-completions.json';
 
-function blobStore() {
+async function blobStore() {
+  const { getStore } = await import('@netlify/blobs');
   const siteID = process.env.SITE_ID || process.env.NETLIFY_SITE_ID;
   const token = process.env.NETLIFY_BLOBS_TOKEN || process.env.NETLIFY_AUTH_TOKEN;
   if (siteID && token) {
@@ -25,7 +25,8 @@ function blobStore() {
 async function loadData() {
   try {
     if (useVercelStore()) return loadJson(VERCEL_TASKS_PATH, { tasks: [], nextId: 1 });
-    const data = await blobStore().get(TASKS_KEY, { type: 'json' });
+    const store = await blobStore();
+    const data = await store.get(TASKS_KEY, { type: 'json' });
     return data || { tasks: [], nextId: 1 };
   } catch {
     return { tasks: [], nextId: 1 };
@@ -34,13 +35,15 @@ async function loadData() {
 
 async function saveData(data) {
   if (useVercelStore()) return saveJson(VERCEL_TASKS_PATH, data);
-  await blobStore().setJSON(TASKS_KEY, data);
+  const store = await blobStore();
+  await store.setJSON(TASKS_KEY, data);
 }
 
 async function loadNotifs() {
   try {
     if (useVercelStore()) return loadJson(VERCEL_NOTIF_PATH, { items: [], nextId: 1 });
-    const data = await blobStore().get(NOTIF_KEY, { type: 'json' });
+    const store = await blobStore();
+    const data = await store.get(NOTIF_KEY, { type: 'json' });
     return data || { items: [], nextId: 1 };
   } catch {
     return { items: [], nextId: 1 };
@@ -49,7 +52,8 @@ async function loadNotifs() {
 
 async function saveNotifs(data) {
   if (useVercelStore()) return saveJson(VERCEL_NOTIF_PATH, data);
-  await blobStore().setJSON(NOTIF_KEY, data);
+  const store = await blobStore();
+  await store.setJSON(NOTIF_KEY, data);
 }
 
 async function loadCompletions() {

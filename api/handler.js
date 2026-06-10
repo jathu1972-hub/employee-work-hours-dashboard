@@ -8,7 +8,7 @@ let handler;
 export default async function vercelHandler(req, res) {
   if (!handler) {
     const { createApiApp } = await import('../server/src/app-api.js');
-    const app = createApiApp();
+    const app = await createApiApp();
     handler = serverless(app, {
       binary: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
     });

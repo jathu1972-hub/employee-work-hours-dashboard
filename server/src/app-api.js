@@ -11,9 +11,13 @@ import {
 } from './db-index.js';
 import { useBlobStore } from './db-router.js';
 import { getTodayDate } from './db-utils.js';
-import * as tasksApi from './tasks-index.js';
-import { registerTaskRoutes } from './task-routes.js';
 import { buildTaskAnalytics } from './task-analytics.js';
+
+let tasksApiPromise = null;
+function getTasksApi() {
+  if (!tasksApiPromise) tasksApiPromise = import('./tasks-index.js');
+  return tasksApiPromise;
+}
 
 const EXCEL_KEYS = {
   master: 'master',
@@ -22,7 +26,7 @@ const EXCEL_KEYS = {
   employee: 'employee',
 };
 
-export function createApiApp() {
+export async function createApiApp() {
   const app = express();
   const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 
@@ -118,6 +122,7 @@ export function createApiApp() {
       const { getDashboardAnalytics } = await import('./analytics.js');
       const analytics = await getDashboardAnalytics(req.query.date);
       try {
+        const tasksApi = await getTasksApi();
         const tasks = await tasksApi.listTasks();
         const completions = await tasksApi.getRecentCompletions(50);
         analytics.taskStats = buildTaskAnalytics(tasks, completions);
@@ -128,7 +133,15 @@ export function createApiApp() {
     }
   });
 
-  registerTaskRoutes(app, tasksApi, adminAuth);
+  const taskRoutesReady = getTasksApi().then(async (tasksApi) => {
+    const { registerTaskRoutes } = await import('./task-routes.js');
+    registerTaskRoutes(app, tasksApi, adminAuth);
+    return tasksApi;
+  });
+  app.use('/api/tasks', async (req, res, next) => {
+    await taskRoutesReady;
+    next();
+  });
 
   app.get('/api/attendance/search', async (req, res) => {
     try {

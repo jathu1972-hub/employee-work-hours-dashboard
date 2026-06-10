@@ -1,4 +1,3 @@
-import { getStore } from '@netlify/blobs';
 import { loadJson, saveJson } from './vercel-json-store.js';
 import { useVercelStore } from './db-router.js';
 import { EMPLOYEES, resolveEmployee } from './employees.js';
@@ -16,7 +15,8 @@ import { runDailyMaintenance, getTodayRowForEmployee } from './daily-reset.js';
 const STORE_NAME = 'attendance-hub';
 const DATA_KEY = 'attendance-data';
 
-function blobStore() {
+async function blobStore() {
+  const { getStore } = await import('@netlify/blobs');
   const siteID = process.env.SITE_ID || process.env.NETLIFY_SITE_ID;
   const token = process.env.NETLIFY_BLOBS_TOKEN || process.env.NETLIFY_AUTH_TOKEN;
   if (siteID && token) {
@@ -33,7 +33,7 @@ async function loadRaw() {
     if (useVercelStore()) {
       data = await loadJson(VERCEL_DATA_PATH, { records: [], nextId: 1 });
     } else {
-      const store = blobStore();
+      const store = await blobStore();
       data = await store.get(DATA_KEY, { type: 'json' });
       data = data || { records: [], nextId: 1 };
     }
@@ -52,7 +52,7 @@ async function saveRaw(data) {
     await saveJson(VERCEL_DATA_PATH, data);
     return;
   }
-  const store = blobStore();
+  const store = await blobStore();
   await store.setJSON(DATA_KEY, data);
 }
 
