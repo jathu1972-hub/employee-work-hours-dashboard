@@ -1,25 +1,24 @@
-import { useBlobStore } from './db-router.js';
-import * as dbLocal from './db-local.js';
-import * as dbBlob from './db-index.js';
-
-const db = useBlobStore() ? dbBlob : dbLocal;
-const {
-  getTodayDate,
-  getAllEmployeesStatus,
-  getAllRecords,
-  getMonthName,
-  formatHoursDisplay,
-} = db;
+import { getAttendanceStore } from './db-store.js';
+import { formatHoursDisplay } from './db-utils.js';
 import { EMPLOYEES as ROSTER } from './employees.js';
 
-export async function getDashboardAnalytics(date = getTodayDate()) {
-  const allEmployees = await getAllEmployeesStatus(date);
+export async function getDashboardAnalytics(date) {
+  const db = await getAttendanceStore();
+  const today = date || db.getTodayDate();
+  const {
+    getTodayDate,
+    getAllEmployeesStatus,
+    getAllRecords,
+    getMonthName,
+  } = db;
+
+  const allEmployees = await getAllEmployeesStatus(today);
   const notStarted = allEmployees.filter((e) => e.statusKey === 'available').length;
   const working = allEmployees.filter((e) => e.statusKey === 'working').length;
   const completed = allEmployees.filter((e) => e.statusKey === 'completed').length;
   const presentToday = working + completed;
 
-  const todayRecords = await getAllRecords({ date });
+  const todayRecords = await getAllRecords({ date: today });
   const totalHours = todayRecords.reduce((s, r) => s + (r.hours_worked || 0), 0);
   const totalMinutes = todayRecords.reduce((s, r) => s + (r.minutes_worked || 0), 0);
   const avgHours = completed > 0 ? totalHours / completed : 0;
@@ -90,7 +89,7 @@ export async function getDashboardAnalytics(date = getTodayDate()) {
   }
 
   return {
-    date,
+    date: today,
     totalEmployees: ROSTER.length,
     employeesPresentToday: presentToday,
     notStartedToday: notStarted,

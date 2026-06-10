@@ -5,14 +5,18 @@ import { fileURLToPath } from 'url';
 import { EMPLOYEES, findEmployee } from './employees.js';
 import { TASK_STATUSES, TASK_PRIORITIES } from './tasks/constants.js';
 import { getTodayDate } from './db-utils.js';
+import { useBlobStore } from './db-router.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dbPath = path.join(__dirname, '..', 'data', 'attendance.db');
 
-fs.mkdirSync(path.dirname(dbPath), { recursive: true });
-const db = new DatabaseSync(dbPath);
+let db = null;
+if (!useBlobStore()) {
+  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+  db = new DatabaseSync(dbPath);
+}
 
-db.exec(`
+if (db) db.exec(`
   CREATE TABLE IF NOT EXISTS tasks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,

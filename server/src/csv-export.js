@@ -1,11 +1,7 @@
 import { useBlobStore } from './db-router.js';
-import * as dbLocal from './db-local.js';
-import * as dbBlob from './db-index.js';
-
-const db = useBlobStore() ? dbBlob : dbLocal;
-const { getAllRecords, getTodayDate, getMonthName } = db;
-import * as tasksSqlite from './tasks-store-sqlite.js';
+import { getAttendanceStore, getTasksSqliteStore } from './db-store.js';
 import * as tasksBlob from './tasks-index.js';
+import { getTodayDate, getMonthName } from './db-utils.js';
 import { EMPLOYEES } from './employees.js';
 
 const ATTENDANCE_HEADERS = [
@@ -44,7 +40,9 @@ export async function getCsvContent(type = 'attendance') {
   const year = String(new Date().getFullYear());
 
   if (type === 'tasks') {
-    const tasks = useBlobStore() ? await tasksBlob.listTasks() : tasksSqlite.listTasks();
+    const tasks = useBlobStore()
+      ? await tasksBlob.listTasks()
+      : (await getTasksSqliteStore()).listTasks();
     return toCsv(
       ['ID', 'Title', 'Employee', 'Priority', 'Status', 'Start Date', 'Start Time', 'End Date', 'End Time', 'Started At', 'Completed At', 'Completion Notes'],
       tasks.map((t) => [
@@ -58,7 +56,7 @@ export async function getCsvContent(type = 'attendance') {
   if (type === 'employees') {
     const employees = useBlobStore()
       ? EMPLOYEES.map((e) => ({ id: e.id, name: e.name, initials: e.initials, color: e.color, role: e.role, department: e.department }))
-      : tasksSqlite.getAllEmployeesForExport();
+      : (await getTasksSqliteStore()).getAllEmployeesForExport();
     return toCsv(
       ['ID', 'Name', 'Initials', 'Color', 'Role', 'Department'],
       employees.map((e) => [e.id, e.name, e.initials, e.color, e.role, e.department])
@@ -68,7 +66,7 @@ export async function getCsvContent(type = 'attendance') {
   if (type === 'completions') {
     const completions = useBlobStore()
       ? await tasksBlob.getRecentCompletions(1000)
-      : tasksSqlite.getAllCompletionsForExport();
+      : (await getTasksSqliteStore()).getAllCompletionsForExport();
     return toCsv(
       ['ID', 'Employee', 'Task', 'Assigned Time', 'Started At', 'Completed At', 'Duration', 'Status', 'Notes', 'Date'],
       completions.map((c) => [
@@ -78,7 +76,8 @@ export async function getCsvContent(type = 'attendance') {
     );
   }
 
-  const all = await getAllRecords();
+  const db = await getAttendanceStore();
+  const all = await db.getAllRecords();
   if (type === 'daily') {
     return toCsv(ATTENDANCE_HEADERS, all.filter((r) => r.date === today).map(formatAttendanceRow));
   }

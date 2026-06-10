@@ -13,21 +13,13 @@ import {
   rowToRecord,
 } from './db-utils.js';
 import { runDailyMaintenance } from './daily-reset.js';
+import { useBlobStore } from './db-router.js';
 
 export { getTodayDate, formatTime, calcDuration, formatHoursDisplay, getMonthName, getDisplayStatus };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dbPath = path.join(__dirname, '..', 'data', 'attendance.db');
 const jsonPath = path.join(__dirname, '..', 'data', 'attendance.json');
-
-function useBlobStore() {
-  return Boolean(
-    process.env.USE_BLOB_DB === '1' ||
-    process.env.NETLIFY === 'true' ||
-    process.env.NETLIFY_DEV ||
-    process.env.AWS_LAMBDA_FUNCTION_NAME
-  );
-}
 
 let db = null;
 if (!useBlobStore()) {
