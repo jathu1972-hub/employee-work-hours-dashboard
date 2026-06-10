@@ -37,7 +37,8 @@ export async function createApiApp() {
     const original =
       req.headers['x-vercel-original-url'] ||
       req.headers['x-forwarded-uri'] ||
-      req.headers['x-invoke-path'];
+      req.headers['x-invoke-path'] ||
+      req.headers['x-vercel-forwarded-path'];
     if (original) {
       try {
         const path = original.startsWith('http')
@@ -45,6 +46,8 @@ export async function createApiApp() {
           : original.startsWith('/') ? original : `/${original}`;
         if (path.startsWith('/api')) req.url = path;
       } catch { /* ignore */ }
+    } else if (process.env.VERCEL && req.url === '/') {
+      req.url = '/api/health';
     }
     next();
   });
