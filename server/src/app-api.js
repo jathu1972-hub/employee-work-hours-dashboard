@@ -47,8 +47,8 @@ export function createApiApp() {
       tasks: true,
       dailyReset: true,
       today: getTodayDate(),
-      platform: process.env.NETLIFY ? 'netlify' : 'node',
-      storage: useBlobStore() ? 'sqlite-blob' : 'sqlite',
+      platform: process.env.VERCEL ? 'vercel' : process.env.NETLIFY ? 'netlify' : 'node',
+      storage: useBlobStore() ? (process.env.VERCEL ? 'vercel-blob' : 'netlify-blob') : 'sqlite',
       excel: true,
       excelStatus: getExcelStatus(),
     });
@@ -105,7 +105,9 @@ export function createApiApp() {
     try {
       const analytics = await getDashboardAnalytics(req.query.date);
       try {
-        analytics.taskStats = buildTaskAnalytics(await tasksApi.listTasks());
+        const tasks = await tasksApi.listTasks();
+        const completions = await tasksApi.getRecentCompletions(50);
+        analytics.taskStats = buildTaskAnalytics(tasks, completions);
       } catch { analytics.taskStats = null; }
       res.json(analytics);
     } catch (e) {
@@ -158,10 +160,15 @@ export function createApiApp() {
   });
 
   app.get('/api/admin/export-csv/:type?', adminAuth, async (req, res) => {
-    const type = req.params.type || 'all';
+    const type = req.params.type || 'attendance';
+    const names = {
+      attendance: 'attendance.csv', all: 'attendance.csv', daily: 'attendance_daily.csv',
+      monthly: 'attendance_monthly.csv', tasks: 'tasks.csv', employees: 'employees.csv',
+      completions: 'task_completions.csv',
+    };
     res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename="attendance_${type}.csv"`);
-    res.send(await getCsvContent(type === 'attendance' ? 'all' : type));
+    res.setHeader('Content-Disposition', `attachment; filename="${names[type] || 'export.csv'}"`);
+    res.send(await getCsvContent(type));
   });
 
   return app;

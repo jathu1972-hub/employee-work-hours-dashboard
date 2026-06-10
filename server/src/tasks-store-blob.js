@@ -1,10 +1,17 @@
 import { getStore } from '@netlify/blobs';
+import { loadJson, saveJson } from './vercel-json-store.js';
+import { useVercelStore } from './db-router.js';
+import { getTodayDate } from './db-utils.js';
 import { EMPLOYEES, findEmployee } from './employees.js';
 import { TASK_STATUSES, TASK_PRIORITIES } from './tasks/constants.js';
 
 const STORE_NAME = 'attendance-hub';
 const TASKS_KEY = 'tasks-data';
 const NOTIF_KEY = 'task-notifications';
+const COMPLETIONS_KEY = 'task-completions';
+const VERCEL_TASKS_PATH = 'attendance-hub/tasks-data.json';
+const VERCEL_NOTIF_PATH = 'attendance-hub/task-notifications.json';
+const VERCEL_COMPLETIONS_PATH = 'attendance-hub/task-completions.json';
 
 function blobStore() {
   const siteID = process.env.SITE_ID || process.env.NETLIFY_SITE_ID;
@@ -17,6 +24,7 @@ function blobStore() {
 
 async function loadData() {
   try {
+    if (useVercelStore()) return loadJson(VERCEL_TASKS_PATH, { tasks: [], nextId: 1 });
     const data = await blobStore().get(TASKS_KEY, { type: 'json' });
     return data || { tasks: [], nextId: 1 };
   } catch {
@@ -25,11 +33,13 @@ async function loadData() {
 }
 
 async function saveData(data) {
+  if (useVercelStore()) return saveJson(VERCEL_TASKS_PATH, data);
   await blobStore().setJSON(TASKS_KEY, data);
 }
 
 async function loadNotifs() {
   try {
+    if (useVercelStore()) return loadJson(VERCEL_NOTIF_PATH, { items: [], nextId: 1 });
     const data = await blobStore().get(NOTIF_KEY, { type: 'json' });
     return data || { items: [], nextId: 1 };
   } catch {
@@ -38,7 +48,30 @@ async function loadNotifs() {
 }
 
 async function saveNotifs(data) {
+  if (useVercelStore()) return saveJson(VERCEL_NOTIF_PATH, data);
   await blobStore().setJSON(NOTIF_KEY, data);
+}
+
+async function loadCompletions() {
+  try {
+    if (useVercelStore()) return loadJson(VERCEL_COMPLETIONS_PATH, { items: [], nextId: 1 });
+    return { items: [], nextId: 1 };
+  } catch {
+    return { items: [], nextId: 1 };
+  }
+}
+
+async function saveCompletions(data) {
+  if (useVercelStore()) return saveJson(VERCEL_COMPLETIONS_PATH, data);
+}
+
+function formatDuration(minutes) {
+  if (minutes == null) return '—';
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h && m) return `${h} Hour${h !== 1 ? 's' : ''} ${m} Minute${m !== 1 ? 's' : ''}`;
+  if (h) return `${h} Hour${h !== 1 ? 's' : ''}`;
+  return `${m} Minute${m !== 1 ? 's' : ''}`;
 }
 
 function normalizeAssignees(input) {
@@ -135,7 +168,10 @@ function applyStatusTimestamps(prev, nextStatus) {
     patch.completed_at = now;
     if (!prev.started_at) patch.started_at = now;
   }
-  if (nextStatus !== 'Completed' && prev.status === 'Completed') patch.completed_at = null;
+  if (nextStatus !== 'Completed' && prev.status === 'Completed') {
+    patch.completed_at = null;
+    patch.completion_notes = null;
+  }
   return patch;
 }
 
@@ -160,23 +196,81 @@ export async function updateTask(id, payload) {
   if (payload.status && !TASK_STATUSES.includes(payload.status)) delete updated.status;
   data.tasks[idx] = updated;
   await saveData(data);
-  for (const name of updated.assignees || [updated.assigned_employee]) {
-    await addNotification(name, updated.id, 'task_updated', `Task updated: ${updated.title}`);
-    if (updated.status === 'Completed') {
-      await addNotification(name, updated.id, 'task_completed', `Task completed: ${updated.title}`);
+  if (!payload._fromCompletion) {
+    for (const name of updated.assignees || [updated.assigned_employee]) {
+      await addNotification(name, updated.id, 'task_updated', `Task updated: ${updated.title}`);
+      if (updated.status === 'Completed') {
+        await addNotification(name, updated.id, 'task_completed', `Task completed: ${updated.title}`);
+      }
     }
   }
   return parseTask(updated);
 }
 
-export async function updateTaskStatus(id, status, employeeName) {
+async function insertCompletionRecord(task, employeeName, completionNotes) {
+  const data = await loadCompletions();
+  const started = task.started_at || task.completed_at;
+  const durationMinutes = started
+    ? Math.max(1, Math.round((new Date(task.completed_at) - new Date(started)) / 60000))
+    : null;
+  data.items.unshift({
+    id: data.nextId++,
+    task_id: task.id,
+    employee_name: employeeName,
+    task_name: task.title,
+    assigned_time: task.start_time || '—',
+    started_at: started,
+    completed_at: task.completed_at,
+    duration_minutes: durationMinutes,
+    duration_display: formatDuration(durationMinutes),
+    status: 'Completed',
+    completion_notes: completionNotes || '',
+    completion_date: (task.completed_at || new Date().toISOString()).slice(0, 10),
+    created_at: new Date().toISOString(),
+  });
+  if (data.items.length > 500) data.items = data.items.slice(0, 500);
+  await saveCompletions(data);
+}
+
+export async function completeTask(id, employeeName, completionNotes = '') {
+  const task = await getTask(id);
+  if (!task) throw new Error('Task not found');
+  if (!task.assignees.some((a) => a.toLowerCase() === employeeName.toLowerCase())) {
+    throw new Error('You can only complete your own tasks');
+  }
+  const now = new Date().toISOString();
+  const updated = await updateTask(id, {
+    status: 'Completed',
+    started_at: task.started_at || now,
+    completed_at: now,
+    completion_notes: completionNotes,
+    _fromCompletion: true,
+  });
+  await insertCompletionRecord(updated, employeeName, completionNotes);
+  await addNotification(employeeName, updated.id, 'task_completed', `${employeeName} completed: ${updated.title}`);
+  return updated;
+}
+
+export async function updateTaskStatus(id, status, employeeName, completionNotes) {
   if (!TASK_STATUSES.includes(status)) throw new Error('Invalid status');
   const task = await getTask(id);
   if (!task) throw new Error('Task not found');
   if (employeeName && !task.assignees.some((a) => a.toLowerCase() === employeeName.toLowerCase())) {
     throw new Error('You can only update your own tasks');
   }
+  if (status === 'Completed') return completeTask(id, employeeName, completionNotes || '');
   return updateTask(id, { status });
+}
+
+export async function getRecentCompletions(limit = 20) {
+  const data = await loadCompletions();
+  return data.items.slice(0, limit);
+}
+
+export async function getCompletionsToday() {
+  const today = getTodayDate();
+  const data = await loadCompletions();
+  return data.items.filter((c) => c.completion_date === today);
 }
 
 export async function deleteTask(id) {

@@ -1,4 +1,6 @@
 import { getStore } from '@netlify/blobs';
+import { loadJson, saveJson } from './vercel-json-store.js';
+import { useVercelStore } from './db-router.js';
 import { EMPLOYEES, resolveEmployee } from './employees.js';
 import {
   getTodayDate,
@@ -23,14 +25,21 @@ function blobStore() {
   return getStore(STORE_NAME);
 }
 
+const VERCEL_DATA_PATH = 'attendance-hub/attendance-data.json';
+
 async function loadRaw() {
   try {
-    const store = blobStore();
-    let data = await store.get(DATA_KEY, { type: 'json' });
-    data = data || { records: [], nextId: 1 };
+    let data;
+    if (useVercelStore()) {
+      data = await loadJson(VERCEL_DATA_PATH, { records: [], nextId: 1 });
+    } else {
+      const store = blobStore();
+      data = await store.get(DATA_KEY, { type: 'json' });
+      data = data || { records: [], nextId: 1 };
+    }
     const snapshot = JSON.stringify(data.records);
     runDailyMaintenance(data);
-    if (JSON.stringify(data.records) !== snapshot) await store.setJSON(DATA_KEY, data);
+    if (JSON.stringify(data.records) !== snapshot) await saveRaw(data);
     return data;
   } catch (e) {
     console.warn('loadRaw:', e.message);
@@ -39,6 +48,10 @@ async function loadRaw() {
 }
 
 async function saveRaw(data) {
+  if (useVercelStore()) {
+    await saveJson(VERCEL_DATA_PATH, data);
+    return;
+  }
   const store = blobStore();
   await store.setJSON(DATA_KEY, data);
 }

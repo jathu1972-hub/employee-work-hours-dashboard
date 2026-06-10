@@ -11,5 +11,6 @@ server/backups/
 !.env.example
 server/exports/*.xlsx
 .netlify/
+.vercel/
 dist/
 *.log

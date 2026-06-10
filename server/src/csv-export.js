@@ -1,5 +1,8 @@
-import { getAllRecords, getTodayDate, getMonthName } from './db-local.js';
-import * as tasksStore from './tasks-store-sqlite.js';
+import { getAllRecords, getTodayDate, getMonthName } from './db-index.js';
+import { useBlobStore } from './db-router.js';
+import * as tasksSqlite from './tasks-store-sqlite.js';
+import * as tasksBlob from './tasks-index.js';
+import { EMPLOYEES } from './employees.js';
 
 const ATTENDANCE_HEADERS = [
   'Employee Name', 'Date', 'Check In Time', 'Check Out Time',
@@ -37,7 +40,7 @@ export async function getCsvContent(type = 'attendance') {
   const year = String(new Date().getFullYear());
 
   if (type === 'tasks') {
-    const tasks = tasksStore.listTasks();
+    const tasks = useBlobStore() ? await tasksBlob.listTasks() : tasksSqlite.listTasks();
     return toCsv(
       ['ID', 'Title', 'Employee', 'Priority', 'Status', 'Start Date', 'Start Time', 'End Date', 'End Time', 'Started At', 'Completed At', 'Completion Notes'],
       tasks.map((t) => [
@@ -49,7 +52,9 @@ export async function getCsvContent(type = 'attendance') {
   }
 
   if (type === 'employees') {
-    const employees = tasksStore.getAllEmployeesForExport();
+    const employees = useBlobStore()
+      ? EMPLOYEES.map((e) => ({ id: e.id, name: e.name, initials: e.initials, color: e.color, role: e.role, department: e.department }))
+      : tasksSqlite.getAllEmployeesForExport();
     return toCsv(
       ['ID', 'Name', 'Initials', 'Color', 'Role', 'Department'],
       employees.map((e) => [e.id, e.name, e.initials, e.color, e.role, e.department])
@@ -57,7 +62,9 @@ export async function getCsvContent(type = 'attendance') {
   }
 
   if (type === 'completions') {
-    const completions = tasksStore.getAllCompletionsForExport();
+    const completions = useBlobStore()
+      ? await tasksBlob.getRecentCompletions(1000)
+      : tasksSqlite.getAllCompletionsForExport();
     return toCsv(
       ['ID', 'Employee', 'Task', 'Assigned Time', 'Started At', 'Completed At', 'Duration', 'Status', 'Notes', 'Date'],
       completions.map((c) => [

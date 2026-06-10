@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "buildCommand": "npm install && npm install --prefix server",
+  "outputDirectory": "server/public",
+  "installCommand": "npm install && npm install --prefix server",
+  "framework": null,
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api" },
+    { "source": "/admin", "destination": "/admin.html" },
+    { "source": "/css/(.*)", "destination": "/css/$1" },
+    { "source": "/js/(.*)", "destination": "/js/$1" }
+  ],
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 30,
+      "includeFiles": "server/src/**"
+    }
+  },
+  "env": {
+    "USE_BLOB_DB": "1",
+    "VERCEL": "1"
+  }
+}
