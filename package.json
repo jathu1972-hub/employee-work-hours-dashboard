@@ -2,6 +2,7 @@
   "name": "attendance-hub",
   "version": "5.0.0",
   "private": true,
+  "type": "module",
   "description": "Employee Attendance & Work Hours Dashboard",
   "scripts": {
     "start": "npm start --prefix server",
@@ -17,6 +18,7 @@
     "@vercel/blob": "^0.27.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
+    "exceljs": "^4.4.0",
     "express": "^4.21.2",
     "serverless-http": "^3.2.0"
   }

@@ -15,7 +15,7 @@ echo  ATTENDANCE HUB - Starting...
 echo  Keep this window OPEN.
 echo.
 
-start "" cmd /c "ping -n 4 127.0.0.1 >nul & start http://localhost:3001 & start http://localhost:3001/admin"
+start "" cmd /c "powershell -NoProfile -Command \"$u='http://localhost:3001/api/health'; for($i=0;$i -lt 45;$i++){ try { $r=Invoke-WebRequest -Uri $u -UseBasicParsing -TimeoutSec 2; if($r.StatusCode -eq 200){ Start-Process 'http://localhost:3001'; Start-Process 'http://localhost:3001/admin'; exit 0 } } catch {}; Start-Sleep -Seconds 1 }; Start-Process 'http://localhost:3001'\""
 
 node src\index.js
 pause

@@ -32,6 +32,22 @@ export function createApiApp() {
   app.use(cors());
   app.use(express.json());
 
+  app.use((req, _res, next) => {
+    const original =
+      req.headers['x-vercel-original-url'] ||
+      req.headers['x-forwarded-uri'] ||
+      req.headers['x-invoke-path'];
+    if (original) {
+      try {
+        const path = original.startsWith('http')
+          ? `${new URL(original).pathname}${new URL(original).search || ''}`
+          : original.startsWith('/') ? original : `/${original}`;
+        if (path.startsWith('/api')) req.url = path;
+      } catch { /* ignore */ }
+    }
+    next();
+  });
+
   const adminAuth = (req, res, next) => {
     if (req.headers['x-admin-password'] !== ADMIN_PASSWORD) {
       return res.status(401).json({ error: 'Unauthorized' });

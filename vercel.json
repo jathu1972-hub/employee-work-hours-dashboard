@@ -5,13 +5,14 @@
   "installCommand": "npm install && npm install --prefix server",
   "framework": null,
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api" },
-    { "source": "/admin", "destination": "/admin.html" },
-    { "source": "/css/(.*)", "destination": "/css/$1" },
-    { "source": "/js/(.*)", "destination": "/js/$1" }
+    { "source": "/admin", "destination": "/admin.html" }
   ],
   "functions": {
     "api/index.js": {
+      "maxDuration": 30,
+      "includeFiles": "server/src/**"
+    },
+    "api/[...path].js": {
       "maxDuration": 30,
       "includeFiles": "server/src/**"
     }

@@ -2,9 +2,14 @@ import ExcelJS from 'exceljs';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { put, list } from '@vercel/blob';
 import { getStore } from '@netlify/blobs';
+import { useVercelStore } from './db-router.js';
 import { getTodayDate, getMonthName } from './db-utils.js';
 import { EMPLOYEES } from './employees.js';
+
+const VERCEL_EXCEL_PREFIX = 'attendance-hub/excel/';
+const blobToken = () => process.env.BLOB_READ_WRITE_TOKEN;
 
 function getExportsDir() {
   try {
@@ -53,8 +58,14 @@ function useBlobExcel() {
     process.env.USE_BLOB_DB === '1' ||
     process.env.NETLIFY === 'true' ||
     process.env.NETLIFY_DEV ||
+    process.env.VERCEL === '1' ||
+    process.env.VERCEL_ENV ||
     process.env.AWS_LAMBDA_FUNCTION_NAME
   );
+}
+
+function useVercelExcel() {
+  return useBlobExcel() && useVercelStore() && Boolean(blobToken());
 }
 
 function blobStore() {
@@ -119,7 +130,20 @@ async function workbookToBuffer(workbook) {
 }
 
 async function saveFile(filename, buffer) {
-  if (useBlobExcel()) {
+  if (useVercelExcel()) {
+    try {
+      await put(`${VERCEL_EXCEL_PREFIX}${filename}`, buffer, {
+        access: 'private',
+        addRandomSuffix: false,
+        allowOverwrite: true,
+        token: blobToken(),
+      });
+      return;
+    } catch (e) {
+      console.warn('Excel vercel blob save:', e.message);
+    }
+  }
+  if (useBlobExcel() && !useVercelStore()) {
     try {
       await blobStore().set(`excel/${filename}`, buffer, {
         metadata: { contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
@@ -264,11 +288,20 @@ export async function refreshExcelFiles(records) {
 }
 
 export function getExcelStatus() {
+  const storage = useVercelExcel()
+    ? 'vercel-blob'
+    : useBlobExcel()
+      ? 'netlify-blob'
+      : 'local-disk';
   return {
     enabled: true,
     autoSync: true,
-    storage: useBlobExcel() ? 'netlify-blob' : 'local-disk',
-    exportPath: useBlobExcel() ? 'Netlify Blobs (excel/*)' : getExportsDir(),
+    storage,
+    exportPath: storage === 'vercel-blob'
+      ? 'Vercel Blob (attendance-hub/excel/*)'
+      : storage === 'netlify-blob'
+        ? 'Netlify Blobs (excel/*)'
+        : getExportsDir(),
     files: Object.values(FILES),
     lastUpdated: lastExcelSync,
   };
@@ -276,7 +309,19 @@ export function getExcelStatus() {
 
 export async function readExcelFile(key) {
   const filename = FILES[key] || FILES.master;
-  if (useBlobExcel()) {
+  if (useVercelExcel()) {
+    try {
+      const pathname = `${VERCEL_EXCEL_PREFIX}${filename}`;
+      const { blobs } = await list({ prefix: pathname, limit: 1, token: blobToken() });
+      if (blobs.length) {
+        const res = await fetch(blobs[0].url, { headers: { Authorization: `Bearer ${blobToken()}` } });
+        if (res.ok) return Buffer.from(await res.arrayBuffer());
+      }
+    } catch (e) {
+      console.warn('Excel vercel blob read:', e.message);
+    }
+  }
+  if (useBlobExcel() && !useVercelStore()) {
     try {
       const data = await blobStore().get(`excel/${filename}`, { type: 'arrayBuffer' });
       if (data) return Buffer.from(data);
@@ -292,7 +337,17 @@ export async function readExcelFile(key) {
 export async function ensureExcelFiles(records = []) {
   const masterPath = path.join(getExportsDir(), FILES.master);
   if (!useBlobExcel() && fs.existsSync(masterPath)) return;
-  if (useBlobExcel()) {
+  if (useVercelExcel()) {
+    try {
+      const { blobs } = await list({
+        prefix: `${VERCEL_EXCEL_PREFIX}${FILES.master}`,
+        limit: 1,
+        token: blobToken(),
+      });
+      if (blobs.length) return;
+    } catch { /* create */ }
+  }
+  if (useBlobExcel() && !useVercelStore()) {
     try {
       const existing = await blobStore().get(`excel/${FILES.master}`);
       if (existing) return;

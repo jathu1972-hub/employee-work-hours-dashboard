@@ -1,5 +1,9 @@
-import { getAllRecords, getTodayDate, getMonthName } from './db-index.js';
 import { useBlobStore } from './db-router.js';
+import * as dbLocal from './db-local.js';
+import * as dbBlob from './db-index.js';
+
+const db = useBlobStore() ? dbBlob : dbLocal;
+const { getAllRecords, getTodayDate, getMonthName } = db;
 import * as tasksSqlite from './tasks-store-sqlite.js';
 import * as tasksBlob from './tasks-index.js';
 import { EMPLOYEES } from './employees.js';

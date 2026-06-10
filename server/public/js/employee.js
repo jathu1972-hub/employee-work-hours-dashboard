@@ -244,6 +244,17 @@ function EmployeeApp() {
     localStorage.setItem('theme', theme);
   }, [theme]);
 
+  const bootErrorMessage = useCallback(() => {
+    if (window.location.protocol === 'file:') {
+      return 'Do not open index.html as a file. Run START.bat, then use http://localhost:3001';
+    }
+    const { origin } = window.location;
+    if (/localhost|127\.0\.0\.1/.test(origin)) {
+      return `Cannot reach server at ${origin}. Run START.bat from the project folder and keep that window open.`;
+    }
+    return `Cannot reach API at ${origin}/api. For local use, run START.bat and open http://localhost:3001`;
+  }, []);
+
   const loadAll = useCallback(async () => {
     try {
       const data = await api('/attendance/employees');
@@ -265,10 +276,10 @@ function EmployeeApp() {
           })));
         }
       } catch { /* ignore */ }
-      setBootError('Cannot reach server. Start START.bat then refresh.');
+      setBootError(bootErrorMessage());
       return null;
     }
-  }, []);
+  }, [bootErrorMessage]);
 
   const fetchEmployeeRecord = useCallback(async (name) => {
     try {

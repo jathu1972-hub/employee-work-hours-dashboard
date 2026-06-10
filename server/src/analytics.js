@@ -1,10 +1,15 @@
-import {
+import { useBlobStore } from './db-router.js';
+import * as dbLocal from './db-local.js';
+import * as dbBlob from './db-index.js';
+
+const db = useBlobStore() ? dbBlob : dbLocal;
+const {
   getTodayDate,
   getAllEmployeesStatus,
   getAllRecords,
   getMonthName,
   formatHoursDisplay,
-} from './db-index.js';
+} = db;
 import { EMPLOYEES as ROSTER } from './employees.js';
 
 export async function getDashboardAnalytics(date = getTodayDate()) {

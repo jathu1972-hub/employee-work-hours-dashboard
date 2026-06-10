@@ -1,10 +1,16 @@
 const API = window.location.origin;
 
 export async function api(path, options = {}) {
-  const res = await fetch(`${API}/api${path}`, {
-    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
-    ...options,
-  });
+  let res;
+  try {
+    res = await fetch(`${API}/api${path}`, {
+      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+      ...options,
+    });
+  } catch (err) {
+    const msg = err?.message || 'Network error';
+    throw new Error(msg === 'Failed to fetch' ? 'Cannot reach server' : msg);
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || 'Request failed');
   return data;
